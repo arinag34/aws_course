@@ -39,7 +39,7 @@
           "api_key_required": false,
           "method_request_parameters": {},
           "integration_request_body_template": {
-            "application/json": "{\"statusCode\": 200}"
+            "application/json": "{\"statusCode\": 200, \"message\": \"Hello from Lambda\"}"
           },
           "responses": [],
           "integration_response": {
