@@ -12,7 +12,7 @@
   "event_sources": [
     {
       "resource_type": "sqs_trigger",
-      "target_queue": "arn:aws:sqs:eu-west-1:423623856894:cmtr-48eab0fb-async_queue",
+      "target_queue": "async_queue",
       "batch_size": 10
     }
   ],
