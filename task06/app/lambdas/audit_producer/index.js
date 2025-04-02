@@ -1,7 +1,8 @@
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 const docClient = new AWS.DynamoDB.DocumentClient();
-const auditTableName = 'Audit';
+
+const auditTableName = process.env.table_name;
 
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));

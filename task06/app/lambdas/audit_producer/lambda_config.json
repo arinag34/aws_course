@@ -16,7 +16,10 @@
       "batch_size": 1
     }
   ],
-  "env_variables": {},
+  "env_variables": {
+    "table_name": "${target_table}",
+    "region": "${region}"
+  },
   "publish_version": true,
   "alias": "${lambdas_alias_name}",
   "url_config": {},
