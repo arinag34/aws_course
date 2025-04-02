@@ -1,42 +1,74 @@
 const { v4: uuidv4 } = require('uuid');
-const AWS = require('aws-sdk');
+const https = require('https');
 
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
-const TABLE_NAME = 'Events';
+const TABLE_NAME = "EVENTS";
+const REGION = "eu-west-1";
+const DYNAMODB_ENDPOINT = `https://dynamodb.${REGION}.amazonaws.com`;
+
+const sendRequest = (method, body) => {
+    const options = {
+        hostname: `dynamodb.${REGION}.amazonaws.com`,
+        method: method,
+        headers: {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "DynamoDB_20120810.PutItem"
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let data = "";
+            res.on("data", (chunk) => (data += chunk));
+            res.on("end", () => resolve(JSON.parse(data)));
+        });
+        req.on("error", (err) => reject(err));
+        req.write(JSON.stringify(body));
+        req.end();
+    });
+};
 
 exports.handler = async (event) => {
     try {
         const body = JSON.parse(event.body);
         const { principalId, content } = body;
 
-        if (!principalId || typeof content !== 'object') {
+        if (!principalId || !content) {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ message: "Invalid request payload" })
+                body: JSON.stringify({ error: "Invalid input data" })
             };
         }
 
-        const newEvent = {
-            id: uuidv4(),
-            principalId,
-            createdAt: new Date().toISOString(),
-            body: content
+        const eventId = uuidv4();
+        const createdAt = new Date().toISOString();
+
+        const eventItem = {
+            id: { S: eventId },
+            principalId: { N: principalId.toString() },
+            createdAt: { S: createdAt },
+            body: { S: JSON.stringify(content) }
         };
 
-        await dynamoDB.put({
+        const dynamoDBRequestBody = {
             TableName: TABLE_NAME,
-            Item: newEvent
-        }).promise();
+            Item: eventItem
+        };
+
+        await sendRequest("POST", dynamoDBRequestBody);
 
         return {
             statusCode: 201,
-            body: JSON.stringify({ event: newEvent })
+            body: JSON.stringify({ event: {
+                    id: eventId,
+                    principalId,
+                    createdAt,
+                    body: content
+                } })
         };
     } catch (error) {
-        console.error("Error saving event:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: "Internal Server Error" })
+            body: JSON.stringify({ error: "Failed to save event", details: error.message })
         };
     }
 };

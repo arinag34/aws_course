@@ -11,8 +11,8 @@
   "dependencies": [],
   "event_sources": [],
   "env_variables": {
-    "table_name": "${Events}",
-    "region": "${eu-west-1}"
+    "table_name": "Events",
+    "region": "eu-west-1"
   },
   "publish_version": true,
   "alias": "${lambdas_alias_name}",
