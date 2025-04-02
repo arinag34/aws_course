@@ -16,7 +16,7 @@ exports.handler = async (event) => {
                 modificationTime: new Date().toISOString(),
                 newValue: {
                     key: newItem.key.S,
-                    value: newItem.value.N
+                    value: parseInt(newItem.value.N)
                 }
             };
             await putAuditItem(auditEntry);
