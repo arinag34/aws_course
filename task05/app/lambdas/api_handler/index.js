@@ -1,8 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const https = require('https');
 
-const TABLE_NAME = "EVENTS";
-const REGION = "eu-west-1";
+const TABLE_NAME = process.env.table_name;
+const REGION = process.env.region;
 const DYNAMODB_ENDPOINT = `https://dynamodb.${REGION}.amazonaws.com`;
 
 const sendRequest = (method, body) => {
@@ -58,7 +58,7 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 201,
-            body: JSON.stringify({ event: {
+            body: JSON.stringify({ statusCode: 201, event: {
                     id: eventId,
                     principalId,
                     createdAt,
