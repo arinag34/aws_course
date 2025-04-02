@@ -1,43 +1,32 @@
-const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
+const AWS = require('aws-sdk');
 
-AWS.config.update({ region: 'eu-west-1' });
-const appsync = new AWS.AppSync();
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
+const docClient = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = 'Events';
-
-const typeDefs = `
-  scalar AWSJSON
-
-  type Event {
-    id: String!
-    userId: Int!
-    createdAt: String!
-    payLoad: AWSJSON!
-  }
-
-  type Mutation {
-    createEvent(userId: Int!, payLoad: AWSJSON!): Event!
-  }
-`;
 
 exports.handler = async (event) => {
     const { userId, payLoad } = event.arguments;
-    const id = uuidv4();
-    const createdAt = new Date().toISOString();
-    const newEvent = {
-        id,
+
+    const newItem = {
+        id: uuidv4(),
         userId,
-        createdAt,
-        payLoad: JSON.parse(payLoad),
+        createdAt: new Date().toISOString(),
+        payLoad: JSON.parse(payLoad)
     };
 
-    await dynamoDB
-        .put({
-            TableName: TABLE_NAME,
-            Item: newEvent,
-        })
-        .promise();
+    const params = {
+        TableName: TABLE_NAME,
+        Item: newItem
+    };
 
-    return newEvent;
+    try {
+        await docClient.put(params).promise();
+        return {
+            id: newItem.id,
+            createdAt: newItem.createdAt
+        };
+    } catch (error) {
+        console.error('Error creating event:', error);
+        throw new Error('Could not create event');
+    }
 };
