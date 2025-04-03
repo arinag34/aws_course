@@ -21,10 +21,7 @@
             "s3:ListBucket"
           ],
           "Effect": "Allow",
-          "Resource": [
-            "arn:aws:s3:::cmtr-48eab0fb-uuid-storage",
-            "arn:aws:s3:::cmtr-48eab0fb-uuid-storage/*"
-          ]
+          "Resource": "*"
         }
       ],
       "Version": "2012-10-17"
@@ -46,7 +43,7 @@
     "public_access_block": {
       "block_public_acls": true,
       "ignore_public_acls": true,
-      "block_public_policy": false,
+      "block_public_policy": true,
       "restrict_public_buckets": true
     },
     "tags": {}

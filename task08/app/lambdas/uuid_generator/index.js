@@ -1,31 +1,28 @@
-const AWS = require('aws-sdk');
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { v4 as uuidv4 } from "uuid";
 
-const { v4: uuidv4 } = require('uuid');
-
-const s3 = new AWS.S3();
+const s3 = new S3Client({ region: process.env.region });
 const BUCKET_NAME = process.env.target_bucket;
 
-exports.handler = async () => {
+export const handler = async () => {
     try {
-        const uuids = Array.from({ length: 10 }, () => uuidv4());
+        const ids = Array.from({ length: 10 }, () => uuidv4());
 
-        const fileContent = JSON.stringify({ ids: uuids }, null, 4);
+        const fileName = `${new Date().toISOString()}.txt`;
 
-        const timestamp = new Date().toISOString();
+        const fileContent = JSON.stringify({ ids }, null, 4);
 
-        const params = {
+        const putObjectCommand = new PutObjectCommand({
             Bucket: BUCKET_NAME,
-            Key: `${timestamp}`,
+            Key: fileName,
             Body: fileContent,
-            ContentType: 'application/json'
-        };
+            ContentType: "application/json",
+        });
 
-        await s3.putObject(params).promise();
+        await s3.send(putObjectCommand);
 
-        console.log(`File saved to S3: ${timestamp}`);
-
+        console.log(`File ${fileName} uploaded successfully to ${BUCKET_NAME}`);
     } catch (error) {
-        console.error('Error saving file to S3:', error);
-        throw new Error('Failed to save UUIDs to S3');
+        console.error("Error uploading file to S3:", error);
     }
 };
