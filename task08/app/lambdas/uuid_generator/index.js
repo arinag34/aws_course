@@ -8,7 +8,7 @@ export const handler = async () => {
     try {
         const ids = Array.from({ length: 10 }, () => uuidv4());
 
-        const fileName = `${new Date().toISOString()}.txt`;
+        const fileName = `${new Date().toISOString()}`;
 
         const fileContent = JSON.stringify({ ids }, null, 4);
 
