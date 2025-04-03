@@ -3,7 +3,7 @@ const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 
 const s3 = new AWS.S3();
-const BUCKET_NAME = 'uuid-storage';
+const BUCKET_NAME = process.env.target_bucket;
 
 exports.handler = async () => {
     try {
