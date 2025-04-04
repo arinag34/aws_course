@@ -23,20 +23,24 @@ exports.handler = async (event) => {
             const weatherData = response.data;
 
             const weatherRecord = {
-                id: uuidv4(),
+                id: uuidv4(),  // Generate unique ID
                 forecast: {
-                    elevation: weatherData.elevation,
-                    generationtime_ms: weatherData.generationtime_ms,
+                    elevation: parseInt(weatherData.elevation),
+                    generationtime_ms: parseInt(weatherData.generationtime_ms),
                     hourly: {
-                        temperature_2m: weatherData.hourly.temperature_2m,
+                        temperature_2m: parseInt(weatherData.hourly.temperature_2m),
                         time: weatherData.hourly.time,
                     },
-                    hourly_units: weatherData.hourly_units,
-                    latitude: weatherData.latitude,
-                    longitude: weatherData.longitude,
+                    hourly_units: {
+                        temperature_2m: weatherData.hourly_units.temperature_2m,
+                        time: weatherData.hourly_units.time,
+                    },
+                    latitude: parseInt(weatherData.latitude),
+                    longitude: parseInt(weatherData.longitude),
                     timezone: weatherData.timezone,
                     timezone_abbreviation: weatherData.timezone_abbreviation,
-                    utc_offset_seconds: weatherData.utc_offset_seconds,
+                    utc_offset_seconds: parseInt(weatherData.utc_offset_seconds),
+
                 }
             };
 
