@@ -8,12 +8,34 @@
   "memory": 128,
   "timeout": 100,
   "lambda_path": "lambdas\\api_handler",
-  "dependencies": [],
+  "dependencies": [
+    {
+      "resource_name": "${booking_userpool}",
+      "resource_type": "cognito_idp"
+    }
+  ],
   "event_sources": [],
-  "env_variables": {},
+  "env_variables": {
+    "cup_id": {
+      "resource_name": "${booking_userpool}",
+      "resource_type": "cognito_idp",
+      "parameter": "id"
+    },
+    "cup_client_id": {
+      "resource_name": "${booking_userpool}",
+      "resource_type": "cognito_idp",
+      "parameter": "client_id"
+    },
+    "booking_userpool": "${booking_userpool}",
+    "tables_table": "${tables_table}",
+    "reservations_table": "${reservations_table}",
+    "region": "${region}"
+  },
   "publish_version": true,
   "alias": "${lambdas_alias_name}",
-  "url_config": {},
+  "url_config": {
+    "auth_type": "NONE"
+  },
   "ephemeral_storage": 512,
   "tags": {}
 }
