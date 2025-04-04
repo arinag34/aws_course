@@ -1,47 +1,55 @@
-const https = require('https');
+const axios = require('axios');
 
-class OpenMeteoClient {
-    constructor(latitude, longitude) {
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.baseUrl = 'https://api.open-meteo.com/v1/forecast';
-    }
+exports.handler = async (event) => {
+    const path = event.rawPath || event.path;
+    const method = event.httpMethod || event.requestContext.http.method;
 
-    buildUrl() {
-        const params = `?latitude=${this.latitude}&longitude=${this.longitude}&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m`;
-        return this.baseUrl + params;
-    }
-
-    fetchForecast() {
-        return new Promise((resolve, reject) => {
-            const url = this.buildUrl();
-            https.get(url, (res) => {
-                let data = '';
-
-                res.on('data', chunk => {
-                    data += chunk;
-                });
-
-                res.on('end', () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        resolve(parsed);
-                    } catch (error) {
-                        reject('Failed to parse JSON response');
-                    }
-                });
-            }).on('error', (err) => {
-                reject(`Error fetching data: ${err.message}`);
+    if (path === '/weather' && method === 'GET') {
+        try {
+            const response = await axios.get('https://api.open-meteo.com/v1/forecast', {
+                params: {
+                    latitude: 52.52,
+                    longitude: 13.41,
+                    current_weather: true,
+                    hourly: 'temperature_2m,relative_humidity_2m,wind_speed_10m',
+                },
             });
-        });
-    }
-}
 
-// Example usage:
-const client = new OpenMeteoClient(52.52, 13.41);
-client.fetchForecast()
-    .then(data => {
-        console.log('Current Weather:', data.current);
-        console.log('Hourly Forecast:', data.hourly);
-    })
-    .catch(err => console.error('Error:', err));
+            const weatherData = response.data;
+
+            return {
+                statusCode: 200,
+                body: JSON.stringify(weatherData),
+                headers: {
+                    'content-type': 'application/json',
+                },
+                isBase64Encoded: false,
+            };
+        } catch (error) {
+            console.error('Error fetching weather data:', error.message);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    statusCode: 500,
+                    message: 'Internal Server Error',
+                }),
+                headers: {
+                    'content-type': 'application/json',
+                },
+                isBase64Encoded: false,
+            };
+        }
+    }
+
+    return {
+        statusCode: 400,
+        body: JSON.stringify({
+            statusCode: 400,
+            message: `Bad request syntax or unsupported method. Request path: ${path}. HTTP method: ${method}`,
+        }),
+        headers: {
+            'content-type': 'application/json',
+        },
+        isBase64Encoded: false,
+    };
+};
