@@ -6,8 +6,8 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.target_table;
 
 exports.handler = async (event) => {
-    const path = event.rawPath || event.path;
-    const method = event.httpMethod || event.requestContext.http.method;
+    const path = '/weather';
+    const method = 'GET';
 
     if (path === '/weather' && method === 'GET') {
         try {
@@ -23,7 +23,7 @@ exports.handler = async (event) => {
             const weatherData = response.data;
 
             const weatherRecord = {
-                id: uuidv4(),  // Generate unique ID
+                id: uuidv4(),
                 forecast: {
                     elevation: parseInt(weatherData.elevation),
                     generationtime_ms: parseInt(weatherData.generationtime_ms),
