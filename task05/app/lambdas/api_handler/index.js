@@ -1,45 +1,59 @@
-const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+const AWS = require("aws-sdk");
 const { v4: uuidv4 } = require("uuid");
 
-const dynamoDb = new DynamoDBClient({ region: process.env.region });
-const TABLE_NAME = process.env.table_name;
+const docClient = new AWS.DynamoDB.DocumentClient();
+const TABLE_NAME = process.env.target_table;
 
 exports.handler = async (event) => {
-    try {
-        const { principalId, content } = JSON.parse(event.body);
+    const path = '/events';
+    const method = 'POST';
 
-        if (!principalId || typeof content !== "object") {
+    if (path === '/events' && method === 'POST') {
+        try {
+            const requestBody = JSON.parse(event.body);
+
+            const eventRecord = {
+                id: uuidv4(),
+                principalId: requestBody.principalId,
+                createdAt: new Date().toISOString(),
+                body: requestBody.content
+            };
+
+            const params = {
+                TableName: TABLE_NAME,
+                Item: eventRecord
+            };
+
+            await docClient.put(params).promise();
+
             return {
-                statusCode: 400,
-                body: JSON.stringify({ message: "Invalid request payload" }),
+                statusCode: 201,
+                body: JSON.stringify({
+                    statusCode: 201,
+                    event: eventRecord,
+                }),
+            };
+        } catch (error) {
+            console.error('Error fetching event data:', error.message);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    statusCode: 500,
+                    message: 'Internal Server Error',
+                }),
             };
         }
-
-        const newEvent = {
-            id: { S: uuidv4() },
-            principalId: { N: principalId.toString() },
-            createdAt: { S: new Date().toISOString() },
-            body: { S: JSON.stringify(content) },
-        };
-
-        await dynamoDb.send(new PutItemCommand({ TableName: TABLE_NAME, Item: newEvent }));
-
-        return {
-            statusCode: 201,
-            body: JSON.stringify({
-                event: {
-                    id: newEvent.id.S,
-                    principalId: parseInt(newEvent.principalId.N, 10),
-                    createdAt: newEvent.createdAt.S,
-                    body: JSON.parse(newEvent.body.S),
-                },
-            }),
-        };
-    } catch (error) {
-        console.error("Error saving event:", error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ message: "Internal server error" }),
-        };
     }
+
+    return {
+        statusCode: 400,
+        body: JSON.stringify({
+            statusCode: 400,
+            message: `Bad request syntax or unsupported method. Request path: ${path}. HTTP method: ${method}`,
+        }),
+        headers: {
+            'content-type': 'application/json',
+        },
+        isBase64Encoded: false,
+    };
 };
