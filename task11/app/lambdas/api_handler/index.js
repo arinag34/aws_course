@@ -129,7 +129,14 @@ exports.handler = async (event) => {
 };
 
 // ==== UTILS ====
-const response = (statusCode, body) => ({
-    statusCode,
-    body: JSON.stringify(typeof body === 'string' ? { message: body } : body)
-});
+const response = (statusCode, body) => {
+    return {
+        statusCode,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: typeof body === 'string' ? JSON.stringify({ message: body }) : JSON.stringify(body),
+        isBase64Encoded: false
+    };
+};
+
