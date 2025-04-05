@@ -10,8 +10,8 @@ const TABLES_TABLE = process.env.tables_table;
 const RESERVATIONS_TABLE = process.env.reservations_table;
 
 exports.handler = async (event) => {
-    const path = event.requestContext?.http?.path;
-    const method = event.requestContext?.http?.method;
+    const path = event?.path;
+    const method = event?.httpMethod
     const body = event.body ? JSON.parse(event.body) : {};
     const headers = {
         'Content-Type': 'application/json'
