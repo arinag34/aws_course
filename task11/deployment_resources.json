@@ -23,6 +23,7 @@
             "cognito-idp:ListUserPoolClients",
             "cognito-idp:AdminRespondToAuthChallenge",
             "cognito-idp:AdminConfirmSignUp",
+            "cognito-idp:AdminSetUserPassword",
             "ssm:PutParameter",
             "ssm:GetParameter",
             "kms:Decrypt"
