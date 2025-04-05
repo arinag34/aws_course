@@ -12,7 +12,7 @@ const TABLES_TABLE = process.env.tables_table;
 const RESERVATIONS_TABLE = process.env.reservations_table;
 
 exports.handler = async (event) => {
-    const route = `${event.httpMethod} ${event.resource}`;
+    const route = `${event.httpMethod} ${event.path}`;
     const body = event.body ? JSON.parse(event.body) : {};
     const headers = {
         'Content-Type': 'application/json'
@@ -154,9 +154,6 @@ exports.handler = async (event) => {
                 const data = await dynamodb.scan({ TableName: RESERVATIONS_TABLE }).promise();
                 return response(200, { reservations: data.Items });
             }
-
-            default:
-                return response(400, { message: 'Unsupported route' });
         }
     } catch (err) {
         console.error('Error:', err);
