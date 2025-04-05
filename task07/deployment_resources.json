@@ -15,15 +15,10 @@
             "ssm:PutParameter",
             "ssm:GetParameter",
             "kms:Decrypt",
-            "dynamodb:GetItem",
-            "dynamodb:Query",
-            "dynamodb:PutItem",
-            "dynamodb:Batch*",
-            "dynamodb:DeleteItem",
             "iam:PassRole"
           ],
           "Effect": "Allow",
-          "Resource": "*"
+          "Resource": "arn:aws:iam::423623856894:role/appsync_role"
         }
       ],
       "Version": "2012-10-17"
