@@ -16,6 +16,7 @@ exports.handler = async (event) => {
     const headers = {
         'Content-Type': 'application/json'
     };
+    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}`);
 
     function response(statusCode, bodyObj) {
         return {
@@ -65,7 +66,6 @@ exports.handler = async (event) => {
                 Password: password,
                 Permanent: true
             }).promise();
-
             return response(200, { message: 'User created' });
         }
 
