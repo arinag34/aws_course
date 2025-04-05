@@ -1,142 +1,165 @@
+// index.js
+
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 
-// Инициализация
 const cognito = new AWS.CognitoIdentityServiceProvider();
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const dynamodb = new AWS.DynamoDB.DocumentClient();
 
-const USER_POOL_ID = process.env.cup_id;
-const CLIENT_ID = process.env.cup_client_id;
-
+const USERS_POOL_ID = process.env.cup_id;
+const USERS_CLIENT_ID = process.env.cup_client_id;
 const TABLES_TABLE = process.env.tables_table;
 const RESERVATIONS_TABLE = process.env.reservations_table;
 
 exports.handler = async (event) => {
-    const path = event?.path;
-    const httpMethod = event?.method;
-    const body = event?.body;
-    const headers = event?.headers;
-    const parsedBody = body ? JSON.parse(body) : null;
+    const route = `${event.httpMethod} ${event.resource}`;
+    const body = event.body ? JSON.parse(event.body) : {};
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    function response(statusCode, bodyObj) {
+        return {
+            statusCode,
+            headers,
+            body: JSON.stringify(bodyObj),
+            isBase64Encoded: false,
+        };
+    }
+
+    async function validateToken(authHeader) {
+        if (!authHeader) throw 'Unauthorized';
+        const token = authHeader.split(' ')[1];
+        const decoded = await cognito.getUser({ AccessToken: token }).promise().catch(() => null);
+        if (!decoded) throw 'Unauthorized';
+        return decoded;
+    }
 
     try {
-        // === SIGNUP ===
-        if (path === '/signup' && httpMethod === 'POST') {
-            const { firstName, lastName, email, password } = parsedBody;
+        switch (route) {
+            // 1. SIGN UP
+            case 'POST /signup': {
+                const { firstName, lastName, email, password } = body;
+                if (!email || !password || password.length < 12 || !/^[\w$%^*-_]+$/.test(password)) {
+                    return response(400, { message: 'Invalid input' });
+                }
 
-            const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-            const isValidPassword = (password) => /^[A-Za-z0-9$%^*\-_]{12,}$/.test(password);
-
-            if (!email || !isValidEmail(email)) {
-                return response(400, 'Invalid email');
-            }
-
-            if (!password || !isValidPassword(password)) {
-                return response(400, 'Invalid password');
-            }
-
-            try {
                 await cognito.adminCreateUser({
-                    UserPoolId: USER_POOL_ID,
+                    UserPoolId: USERS_POOL_ID,
                     Username: email,
-                    TemporaryPassword: password,
-                    MessageAction: 'SUPPRESS',
                     UserAttributes: [
                         { Name: 'email', Value: email },
+                        { Name: 'email_verified', Value: 'true' },
                         { Name: 'given_name', Value: firstName },
-                        { Name: 'family_name', Value: lastName }
-                    ]
+                        { Name: 'family_name', Value: lastName },
+                    ],
+                    MessageAction: 'SUPPRESS'
                 }).promise();
 
                 await cognito.adminSetUserPassword({
-                    UserPoolId: USER_POOL_ID,
+                    UserPoolId: USERS_POOL_ID,
                     Username: email,
                     Password: password,
                     Permanent: true
                 }).promise();
 
                 return response(200, { message: 'User created' });
-            } catch (err) {
-                console.error(err);
-                return response(400, 'User creation failed');
             }
-        }
 
-            // === SIGNIN ===
-        if (path === '/signin' && httpMethod === 'POST') {
-            const { email, password } = parsedBody;
-
-            try {
-                const authResult = await cognito.initiateAuth({
+            // 2. SIGN IN
+            case 'POST /signin': {
+                const { email, password } = body;
+                const result = await cognito.initiateAuth({
                     AuthFlow: 'USER_PASSWORD_AUTH',
-                    ClientId: CLIENT_ID,
+                    ClientId: USERS_CLIENT_ID,
                     AuthParameters: {
                         USERNAME: email,
                         PASSWORD: password
                     }
                 }).promise();
 
-                return response(200, { idToken: authResult.AuthenticationResult.IdToken });
-            } catch (err) {
-                console.error(err);
-                return response(400, 'Sign-in failed');
+                return response(200, { idToken: result.AuthenticationResult.IdToken });
             }
+
+            // 3. GET TABLES
+            case 'GET /tables': {
+                await validateToken(event.headers.Authorization);
+                const data = await dynamodb.scan({ TableName: TABLES_TABLE }).promise();
+                return response(200, { tables: data.Items });
+            }
+
+            // 4. POST TABLE
+            case 'POST /tables': {
+                await validateToken(event.headers.Authorization);
+                const { id, number, places, isVip, minOrder } = body;
+                if (!id || !number || !places || typeof isVip !== 'boolean') {
+                    return response(400, { message: 'Invalid input' });
+                }
+
+                const newItem = { id, number, places, isVip };
+                if (minOrder !== undefined) newItem.minOrder = minOrder;
+
+                await dynamodb.put({
+                    TableName: TABLES_TABLE,
+                    Item: newItem
+                }).promise();
+
+                return response(200, { id });
+            }
+
+            // 5. GET TABLE BY ID
+            case 'GET /tables/{tableId}': {
+                await validateToken(event.headers.Authorization);
+                const { tableId } = event.pathParameters || {};
+                if (!tableId) return response(400, { message: 'Missing table ID' });
+
+                const data = await dynamodb.get({
+                    TableName: TABLES_TABLE,
+                    Key: { id: parseInt(tableId) }
+                }).promise();
+
+                return data.Item
+                    ? response(200, data.Item)
+                    : response(400, { message: 'Table not found' });
+            }
+
+            // 6. POST RESERVATION
+            case 'POST /reservations': {
+                await validateToken(event.headers.Authorization);
+                const { tableNumber, clientName, phoneNumber, date, slotTimeStart, slotTimeEnd } = body;
+                if (!tableNumber || !clientName || !phoneNumber || !date || !slotTimeStart || !slotTimeEnd) {
+                    return response(400, { message: 'Invalid input' });
+                }
+
+                const reservationId = uuidv4();
+                await dynamodb.put({
+                    TableName: RESERVATIONS_TABLE,
+                    Item: {
+                        id: reservationId,
+                        tableNumber,
+                        clientName,
+                        phoneNumber,
+                        date,
+                        slotTimeStart,
+                        slotTimeEnd
+                    }
+                }).promise();
+
+                return response(200, { reservationId });
+            }
+
+            // 7. GET RESERVATIONS
+            case 'GET /reservations': {
+                await validateToken(event.headers.Authorization);
+                const data = await dynamodb.scan({ TableName: RESERVATIONS_TABLE }).promise();
+                return response(200, { reservations: data.Items });
+            }
+
+            default:
+                return response(400, { message: 'Unsupported route' });
         }
-
-        // === AUTHORIZED ROUTES ===
-        const token = headers?.Authorization?.split(' ')[1];
-        if (!token) return response(400, 'Missing Authorization token');
-
-        // === TABLES ===
-        if (path === '/tables' && httpMethod === 'GET') {
-            const result = await dynamo.scan({ TableName: TABLES_TABLE }).promise();
-            return response(200, { tables: result.Items });
-        }
-
-        if (path === '/tables' && httpMethod === 'POST') {
-            const table = parsedBody;
-            await dynamo.put({ TableName: TABLES_TABLE, Item: table }).promise();
-            return response(200, { id: table.id });
-        }
-
-        const tableIdMatch = path.match(/^\/tables\/(\d+)$/);
-        if (tableIdMatch && httpMethod === 'GET') {
-            const id = parseInt(tableIdMatch[1]);
-            const result = await dynamo.get({ TableName: TABLES_TABLE, Key: { id } }).promise();
-            if (!result.Item) return response(400, 'Table not found');
-            return response(200, result.Item);
-        }
-
-        // === RESERVATIONS ===
-        if (path === '/reservations' && httpMethod === 'POST') {
-            const reservation = {
-                id: uuidv4(),
-                ...parsedBody
-            };
-            await dynamo.put({ TableName: RESERVATIONS_TABLE, Item: reservation }).promise();
-            return response(200, { id: reservation.id });
-        }
-
-        if (path === '/reservations' && httpMethod === 'GET') {
-            const result = await dynamo.scan({ TableName: RESERVATIONS_TABLE }).promise();
-            return response(200, { reservations: result.Items });
-        }
-
-        return response(400, 'Invalid route');
     } catch (err) {
-        console.error(err);
-        return response(400, err.message || 'Internal error');
+        console.error('Error:', err);
+        return response(400, { message: err.message || err });
     }
 };
-
-// ==== UTILS ====
-const response = (statusCode, body) => {
-    return {
-        statusCode,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: typeof body === 'string' ? JSON.stringify({ message: body }) : JSON.stringify(body),
-        isBase64Encoded: false
-    };
-};
-
