@@ -18,7 +18,7 @@
             "iam:PassRole"
           ],
           "Effect": "Allow",
-          "Resource": "arn:aws:iam::423623856894:role/appsync_role"
+          "Resource": "*"
         }
       ],
       "Version": "2012-10-17"
