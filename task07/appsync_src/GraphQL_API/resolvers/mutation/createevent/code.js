@@ -4,15 +4,12 @@ import * as ddb from '@aws-appsync/utils/dynamodb';
 export function request(ctx) {
     const id = util.autoId();
     const createdAt = util.time.nowISO8601();
-    const payLoadRaw = ctx.args.payLoad;
-
-    const payLoadParsed = JSON.parse(ctx.args.payLoad);
 
     const item = {
         id,
         userId: ctx.args.userId,
         createdAt,
-        payLoad: util.dynamodb.toMap(payLoadParsed)
+        payLoad: ctx.args.payLoad
     };
 
     ctx.stash.id = id;
