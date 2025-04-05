@@ -12,54 +12,74 @@ const TABLES_TABLE = process.env.tables_table;
 const RESERVATIONS_TABLE = process.env.reservations_table;
 
 exports.handler = async (event) => {
-    const { path, httpMethod, body, headers } = event;
+    const path = event?.path;
+    const httpMethod = event?.method;
+    const body = event?.body;
+    const headers = event?.headers;
     const parsedBody = body ? JSON.parse(body) : null;
 
     try {
-        // ==== SIGNUP ====
+        // === SIGNUP ===
         if (path === '/signup' && httpMethod === 'POST') {
             const { firstName, lastName, email, password } = parsedBody;
 
-            if (!email || !password || password.length < 12) {
-                return response(400, 'Invalid input');
+            const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            const isValidPassword = (password) => /^[A-Za-z0-9$%^*\-_]{12,}$/.test(password);
+
+            if (!email || !isValidEmail(email)) {
+                return response(400, 'Invalid email');
             }
 
-            await cognito.adminCreateUser({
-                UserPoolId: USER_POOL_ID,
-                Username: email,
-                TemporaryPassword: password,
-                MessageAction: 'SUPPRESS',
-                UserAttributes: [
-                    { Name: 'email', Value: email },
-                    { Name: 'given_name', Value: firstName },
-                    { Name: 'family_name', Value: lastName }
-                ]
-            }).promise();
+            if (!password || !isValidPassword(password)) {
+                return response(400, 'Invalid password');
+            }
 
-            await cognito.adminSetUserPassword({
-                UserPoolId: USER_POOL_ID,
-                Username: email,
-                Password: password,
-                Permanent: true
-            }).promise();
+            try {
+                await cognito.adminCreateUser({
+                    UserPoolId: USER_POOL_ID,
+                    Username: email,
+                    TemporaryPassword: password,
+                    MessageAction: 'SUPPRESS',
+                    UserAttributes: [
+                        { Name: 'email', Value: email },
+                        { Name: 'given_name', Value: firstName },
+                        { Name: 'family_name', Value: lastName }
+                    ]
+                }).promise();
 
-            return response(200, { message: 'User created' });
+                await cognito.adminSetUserPassword({
+                    UserPoolId: USER_POOL_ID,
+                    Username: email,
+                    Password: password,
+                    Permanent: true
+                }).promise();
+
+                return response(200, { message: 'User created' });
+            } catch (err) {
+                console.error(err);
+                return response(400, 'User creation failed');
+            }
         }
 
-        // ==== SIGNIN ====
+            // === SIGNIN ===
         if (path === '/signin' && httpMethod === 'POST') {
             const { email, password } = parsedBody;
 
-            const authResult = await cognito.initiateAuth({
-                AuthFlow: 'USER_PASSWORD_AUTH',
-                ClientId: CLIENT_ID,
-                AuthParameters: {
-                    USERNAME: email,
-                    PASSWORD: password
-                }
-            }).promise();
+            try {
+                const authResult = await cognito.initiateAuth({
+                    AuthFlow: 'USER_PASSWORD_AUTH',
+                    ClientId: CLIENT_ID,
+                    AuthParameters: {
+                        USERNAME: email,
+                        PASSWORD: password
+                    }
+                }).promise();
 
-            return response(200, { idToken: authResult.AuthenticationResult.IdToken });
+                return response(200, { idToken: authResult.AuthenticationResult.IdToken });
+            } catch (err) {
+                console.error(err);
+                return response(400, 'Sign-in failed');
+            }
         }
 
         // === AUTHORIZED ROUTES ===
