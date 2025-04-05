@@ -6,11 +6,13 @@ export function request(ctx) {
     const createdAt = util.time.nowISO8601();
     const payLoadRaw = ctx.args.payLoad;
 
+    const payLoadParsed = JSON.parse(ctx.args.payLoad);
+
     const item = {
         id,
         userId: ctx.args.userId,
         createdAt,
-        payLoad: util.dynamodb.toMap(payLoadRaw)
+        payLoad: util.dynamodb.toMap(payLoadParsed)
     };
 
     ctx.stash.id = id;
