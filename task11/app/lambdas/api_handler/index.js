@@ -130,12 +130,8 @@ exports.handler = async (event) => {
 
             await dynamodb.put({
                 TableName: TABLES_TABLE,
-                Item: {
-                    ...newItem,
-                    id: String(id)
-                }
+                Item: newItem
             }).promise();
-
 
             return response(200, { id });
         }

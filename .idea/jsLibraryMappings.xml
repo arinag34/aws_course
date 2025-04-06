@@ -2,6 +2,5 @@
 <project version="4">
   <component name="JavaScriptLibraryMappings">
     <includedPredefinedLibrary name="Node.js Core" />
-    <excludedPredefinedLibrary name="aws_course/task11/.syndicate-config-dev/bundles/task11_250406.111039/api_handler-1.0/node_modules" />
   </component>
 </project>
