@@ -92,7 +92,8 @@ exports.handler = async (event) => {
         }
 
         if (method === 'POST' && path === '/tables') {
-            await validateToken(event.headers.Authorization);
+            await validateToken(`Bearer ${event.headers.Authorization}`);
+            console.log(`TOKEN: ${event.headers.Authorization}`);
             const { id, number, places, isVip, minOrder } = body;
 
             if (
