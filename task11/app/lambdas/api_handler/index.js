@@ -13,13 +13,15 @@ exports.handler = async (event) => {
     const path = event?.path;
     const method = event?.httpMethod
     const body = event.body ? JSON.parse(event.body) : {};
-    const headers = event?.headers;
-    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}, HEADERS: ${headers}`);
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}, HEADERS: ${event.headers}`);
 
     function response(statusCode, bodyObj) {
         return {
             statusCode,
-            'Content-Type': 'application/json',
+            headers,
             body: JSON.stringify(bodyObj),
             isBase64Encoded: false,
         };
