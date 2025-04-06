@@ -153,35 +153,54 @@ exports.handler = async (event) => {
         if (method === 'POST' && path === '/reservations') {
             await validateToken(event.headers.Authorization);
 
-            const {
+            const { tableNumber, clientName, phoneNumber, date, slotTimeStart, slotTimeEnd } = body;
+
+            const tableCheck = await dynamodb.scan({
+                TableName: TABLES_TABLE,
+                FilterExpression: '#number = :number',
+                ExpressionAttributeNames: { '#number': 'number' },
+                ExpressionAttributeValues: { ':number': tableNumber }
+            }).promise();
+
+            if (!tableCheck.Items || tableCheck.Items.length === 0) {
+                return response(400, { message: 'Table not found' });
+            }
+
+            const reservationsCheck = await dynamodb.scan({
+                TableName: RESERVATIONS_TABLE,
+                FilterExpression: 'tableNumber = :tableNumber AND #date = :date',
+                ExpressionAttributeNames: { '#date': 'date' },
+                ExpressionAttributeValues: {
+                    ':tableNumber': tableNumber,
+                    ':date': date
+                }
+            }).promise();
+
+            const overlaps = reservationsCheck.Items.some(r => {
+                const existingStart = r.slotTimeStart;
+                const existingEnd = r.slotTimeEnd;
+
+                return !(slotTimeEnd <= existingStart || slotTimeStart >= existingEnd);
+            });
+
+            if (overlaps) {
+                return response(400, { message: 'Overlapping reservation exists' });
+            }
+
+            const reservationId = uuidv4();
+            const item = {
+                id: reservationId,
                 tableNumber,
                 clientName,
                 phoneNumber,
                 date,
                 slotTimeStart,
                 slotTimeEnd
-            } = body;
-
-            if (
-                !tableNumber || !clientName || !phoneNumber ||
-                !date || !slotTimeStart || !slotTimeEnd
-            ) {
-                return response(400, { message: 'Invalid input' });
-            }
-
-            const reservationId = uuidv4();
+            };
 
             await dynamodb.put({
                 TableName: RESERVATIONS_TABLE,
-                Item: {
-                    id: reservationId,
-                    tableNumber,
-                    clientName,
-                    phoneNumber,
-                    date,
-                    slotTimeStart,
-                    slotTimeEnd
-                }
+                Item: item
             }).promise();
 
             return response(200, { reservationId });
