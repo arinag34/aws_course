@@ -13,15 +13,13 @@ exports.handler = async (event) => {
     const path = event?.path;
     const method = event?.httpMethod
     const body = event.body ? JSON.parse(event.body) : {};
-    const headers = {
-        'Content-Type': 'application/json'
-    };
-    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}`);
+    const headers = event?.headers;
+    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}, HEADERS: ${headers}`);
 
     function response(statusCode, bodyObj) {
         return {
             statusCode,
-            headers,
+            'Content-Type': 'application/json',
             body: JSON.stringify(bodyObj),
             isBase64Encoded: false,
         };
@@ -92,8 +90,7 @@ exports.handler = async (event) => {
         }
 
         if (method === 'POST' && path === '/tables') {
-            await validateToken(`Bearer ${event.headers.Authorization.split(' ')[1]}`);
-            console.log(`TOKEN: ${event.headers.Authorization}`);
+            await validateToken(event.headers.Authorization);
             const { id, number, places, isVip, minOrder } = body;
 
             if (
