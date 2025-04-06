@@ -1,5 +1,7 @@
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
 
 const cognito = new AWS.CognitoIdentityServiceProvider();
 const dynamodb = new AWS.DynamoDB.DocumentClient();
@@ -16,7 +18,7 @@ exports.handler = async (event) => {
     const headers = {
         'Content-Type': 'application/json'
     };
-    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}, HEADERS: ${event.headers}`);
+    console.log(`PATH: ${path}, METHOD: ${method}, BODY: ${JSON.stringify(body)}`);
 
     function response(statusCode, bodyObj) {
         return {
@@ -27,13 +29,32 @@ exports.handler = async (event) => {
         };
     }
 
+    const client = jwksClient({
+        jwksUri: `https://cognito-idp.${process.env.region}.amazonaws.com/${USERS_POOL_ID}/.well-known/jwks.json`
+    });
+
+    function getKey(header, callback) {
+        client.getSigningKey(header.kid, function (err, key) {
+            const signingKey = key.getPublicKey();
+            callback(null, signingKey);
+        });
+    }
+
     async function validateToken(authHeader) {
         if (!authHeader) throw 'Unauthorized';
         const token = authHeader.split(' ')[1];
-        const result = await cognito.getUser({ AccessToken: token }).promise().catch(() => null);
-        if (!result) throw 'Unauthorized';
-        return result;
+        return await new Promise((resolve, reject) => {
+            jwt.verify(token, getKey, {
+                audience: USERS_CLIENT_ID,
+                issuer: `https://cognito-idp.${process.env.AWS_REGION}.amazonaws.com/${USERS_POOL_ID}`,
+                algorithms: ['RS256']
+            }, (err, decoded) => {
+                if (err) return reject('Unauthorized');
+                resolve(decoded);
+            });
+        });
     }
+
 
     try {
         if (method === 'POST' && path === '/signup') {
